@@ -7,6 +7,7 @@
   window.Board = Backbone.Model.extend({
 
     initialize: function (params) {
+      // debugger;
       if (_.isUndefined(params) || _.isNull(params)) {
         console.log('Good guess! But to use the Board() constructor, you must pass it an argument in one of the following formats:');
         console.log('\t1. An object. To create an empty board of size n:\n\t\t{n: %c<num>%c} - Where %c<num> %cis the dimension of the (empty) board you wish to instantiate\n\t\t%cEXAMPLE: var board = new Board({n:5})', 'color: blue;', 'color: black;', 'color: blue;', 'color: black;', 'color: grey;');
@@ -37,6 +38,10 @@
       return colIndex + rowIndex;
     },
 
+    hasAnyRooksConflictsOn: function(rowIndex, colIndex) {
+      return this.hasRowConflictAt(rowIndex) || this.hasColConflictAt(colIndex);
+    },
+
     hasAnyRooksConflicts: function() {
       return this.hasAnyRowConflicts() || this.hasAnyColConflicts();
     },
@@ -45,8 +50,8 @@
       return (
         this.hasRowConflictAt(rowIndex) ||
         this.hasColConflictAt(colIndex) ||
-        this.hasMajorDiagonalConflictAt(this._getFirstRowColumnIndexForMajorDiagonalOn(rowIndex, colIndex)) ||
-        this.hasMinorDiagonalConflictAt(this._getFirstRowColumnIndexForMinorDiagonalOn(rowIndex, colIndex))
+        this.hasMajorDiagonalConflictAt(this._getFirstRowColumnIndexForMajorDiagonalOn(rowIndex, colIndex),rowIndex, colIndex) ||
+        this.hasMinorDiagonalConflictAt(this._getFirstRowColumnIndexForMinorDiagonalOn(rowIndex, colIndex),rowIndex, colIndex)
       );
     },
 
@@ -62,7 +67,7 @@
     },
 
 
-/*
+    /*
          _             _     _
      ___| |_ __ _ _ __| |_  | |__   ___ _ __ ___ _
     / __| __/ _` | '__| __| | '_ \ / _ \ '__/ _ (_)
@@ -108,68 +113,62 @@
     // --------------------------------------------------------------
     //
     // test if a specific column on this board contains a conflict
-    // [1,0,0,0], [1, 0, 0]
     hasColConflictAt: function(colIndex) {
 
       let theseRows = this.attributes;
       var accumulator = 0;
       for (let i = 0; i < theseRows.n; i++) {
-        // if (this.hasRowConflictAt(key)) {
-        //   return true;
-        // }
         accumulator += this.attributes[i][colIndex]; // Number(row[colIndex]);
         if (accumulator > 1) {
           return true;
         }
       }
-      // iterating over theseRows
 
-      return false; // fixme
+      return false;
     },
 
     // test if any columns on this board contain conflicts
     hasAnyColConflicts: function() {
       let theseRows = this.attributes;
-      // theseRows = theseRows.slice(-1);
-      // for (let row[index] in theseRows) {
       for (let i = 0; i < theseRows.n; i++) {
-        // if (i !== 'n') {
-          if (this.hasColConflictAt(i)) {
-            return true;
-          }
-        // }
+        if (this.hasColConflictAt(i)) {
+          return true;
+        }
       }
-      return false; // fixme
+      return false;
     },
-  //
+    //
 
 
     // Major Diagonals - go from top-left to bottom-right
     // --------------------------------------------------------------
     //
     // test if a specific major diagonal on this board contains a conflict
-    hasMajorDiagonalConflictAt: function(majorDiagonalColumnIndexAtFirstRow, firstRowIndex, firstColIndex) {
-      // majorDiagonalColumnIndexAtFirstRow = Number
-      // get access to all rows
+    hasMajorDiagonalConflictAt: function(majorDiagonalColumnIndexAtFirstRow) {
 
       let theseRows = this.attributes;
+      let accumulator = 0;
       for (let rowIndex = 0; rowIndex < theseRows.n; rowIndex++) {
-        var colIndex = this.attributes[rowIndex].indexOf(1);
-        if (colIndex !== -1 && colIndex !== firstColIndex && rowIndex !== firstRowIndex) {
-          if (this._getFirstRowColumnIndexForMajorDiagonalOn(rowIndex, colIndex) === majorDiagonalColumnIndexAtFirstRow) {
-            return true;
+        for (let colIndex = 0; colIndex < theseRows[rowIndex].length; colIndex++) {
+          if (theseRows[rowIndex][colIndex] === 1) {
+            if (this._getFirstRowColumnIndexForMajorDiagonalOn(rowIndex, colIndex) === majorDiagonalColumnIndexAtFirstRow) {
+              accumulator++;
+              if (accumulator > 1) {
+                return true;
+              }
+            }
           }
         }
+
       }
       return false; // fixme
     },
 
     // test if any major diagonals on this board contain conflicts
     hasAnyMajorDiagonalConflicts: function() {
-      // debugger;
       let theseRows = this.attributes;
       for (let i = 0; i < this.attributes.n; i++) {
-        // for (let j = 0;)
+        // Potential bug for not checking rest of row
         var colIndex = this.attributes[i].indexOf(1);
         if (colIndex !== -1) {
           var md = this._getFirstRowColumnIndexForMajorDiagonalOn(i, colIndex);
@@ -178,9 +177,8 @@
           }
         }
       }
-      return false; // fixme
-      // hasMajorDiagonalConflictAt(majorDiagonalColumnIndexAtFirstRow)
-      // return false; // fixme
+      return false;
+
     },
 
 
@@ -189,17 +187,19 @@
     // --------------------------------------------------------------
     //
     // test if a specific minor diagonal on this board contains a conflict
-    hasMinorDiagonalConflictAt: function(minorDiagonalColumnIndexAtFirstRow, firstRowIndex, firstColIndex) {
-
-      // majorDiagonalColumnIndexAtFirstRow = Number
-      // get access to all rows
+    hasMinorDiagonalConflictAt: function(minorDiagonalColumnIndexAtFirstRow) {
 
       let theseRows = this.attributes;
+      let accumulator = 0;
       for (let rowIndex = 0; rowIndex < theseRows.n; rowIndex++) {
-        var colIndex = this.attributes[rowIndex].indexOf(1);
-        if (colIndex !== -1 && colIndex !== firstColIndex && rowIndex !== firstRowIndex) {
-          if (this._getFirstRowColumnIndexForMinorDiagonalOn(rowIndex, colIndex) === minorDiagonalColumnIndexAtFirstRow) {
-            return true;
+        for (let colIndex = 0; colIndex < theseRows[rowIndex].length; colIndex++) {
+          if (theseRows[rowIndex][colIndex] === 1) {
+            if (this._getFirstRowColumnIndexForMinorDiagonalOn(rowIndex, colIndex) === minorDiagonalColumnIndexAtFirstRow) {
+              accumulator++;
+              if (accumulator > 1) {
+                return true;
+              }
+            }
           }
         }
       }
@@ -210,7 +210,7 @@
     hasAnyMinorDiagonalConflicts: function() {
       let theseRows = this.attributes;
       for (let i = 0; i < this.attributes.n; i++) {
-        // for (let j = 0;)
+        // Potential bug for not checking rest of row
         var colIndex = this.attributes[i].indexOf(1);
         if (colIndex !== -1) {
           var md = this._getFirstRowColumnIndexForMinorDiagonalOn(i, colIndex);
